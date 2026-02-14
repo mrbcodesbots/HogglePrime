@@ -14,7 +14,20 @@ Also accessible via Gradio UI at http://localhost:7861
 """
 
 import os
+import sys
 import tempfile
+import types
+
+# Stub out xformers before audiocraft tries to import it.
+# AudioCraft unconditionally does "from xformers import ops" in its
+# transformer module, but xformers is only used for memory-efficient
+# attention during training.  For inference the standard PyTorch
+# attention path works fine, so we provide an empty stub instead of
+# pulling in the full xformers build (which needs CUDA dev headers).
+_xformers = types.ModuleType("xformers")
+_xformers.ops = types.ModuleType("xformers.ops")
+sys.modules["xformers"] = _xformers
+sys.modules["xformers.ops"] = _xformers.ops
 
 import gradio as gr
 import scipy.io.wavfile
