@@ -18,20 +18,44 @@ import sys
 import tempfile
 import types
 
-# Stub out xformers before audiocraft tries to import it.
-# AudioCraft unconditionally does "from xformers import ops" in its
-# transformer module and calls _verify_xformers_memory_efficient_compat()
-# which checks for specific functions.  xformers is only used for
-# memory-efficient attention during training.  For inference the standard
-# PyTorch attention path works fine, so we provide a stub with the
-# attributes audiocraft expects instead of pulling in the full xformers
-# build (which needs CUDA dev headers).
-_xformers = types.ModuleType("xformers")
-_ops = types.ModuleType("xformers.ops")
+# ---------------------------------------------------------------------------
+# xformers stub: replaces the real xformers package with a lightweight shim
+# that redirects every call to its PyTorch equivalent.
+#
+# AudioCraft does `from xformers import ops` at module level and then calls
+# ops.memory_efficient_attention, ops.unbind, ops.LowerTriangularMask, etc.
+# throughout its transformer code.  Rather than adding stubs one-by-one
+# (whack-a-mole), we use a custom module whose __getattr__ automatically
+# delegates unknown names to `torch`, and we provide a real implementation
+# of memory_efficient_attention that wraps PyTorch's scaled_dot_product_attention.
+# ---------------------------------------------------------------------------
 
-# audiocraft's _verify_xformers_memory_efficient_compat() imports these:
-_ops.memory_efficient_attention = None
-_ops.LowerTriangularMask = None
+
+class _XformersOpsModule(types.ModuleType):
+    """Drop-in stub for xformers.ops that proxies to torch for missing attrs."""
+
+    def __getattr__(self, name):
+        import torch
+        if hasattr(torch, name):
+            return getattr(torch, name)
+        raise AttributeError(
+            f"module 'xformers.ops' has no attribute '{name}'")
+
+
+def _memory_efficient_attention(query, key, value, attn_bias=None,
+                                p=0.0, scale=None):
+    """PyTorch-native replacement for xformers.ops.memory_efficient_attention."""
+    import torch
+    is_causal = attn_bias is not None
+    return torch.nn.functional.scaled_dot_product_attention(
+        query, key, value, attn_mask=None,
+        dropout_p=p, scale=scale, is_causal=is_causal)
+
+
+_xformers = types.ModuleType("xformers")
+_ops = _XformersOpsModule("xformers.ops")
+_ops.memory_efficient_attention = _memory_efficient_attention
+_ops.LowerTriangularMask = type('LowerTriangularMask', (), {})
 
 _xformers.ops = _ops
 sys.modules["xformers"] = _xformers
@@ -41,17 +65,9 @@ import gradio as gr
 import scipy.io.wavfile
 import torch
 
-# Patch audiocraft's transformer module to bypass xformers entirely.
-# Three things are needed:
-#   1. The stub above satisfies "from xformers import ops" at module level.
-#   2. Replace _verify_xformers_memory_efficient_compat() with a no-op so
-#      StreamingMultiheadAttention.__init__ doesn't raise ImportError.
-#   3. Force _efficient_attention_backend = 'torch' so the forward() method
-#      uses PyTorch's scaled_dot_product_attention instead of xformers ops.
+# Make the verify function a no-op (our stub handles everything).
 import audiocraft.modules.transformer as _ac_tx
 _ac_tx._verify_xformers_memory_efficient_compat = lambda: None
-if hasattr(_ac_tx, '_efficient_attention_backend'):
-    _ac_tx._efficient_attention_backend = 'torch'
 
 from audiocraft.models import AudioGen
 
