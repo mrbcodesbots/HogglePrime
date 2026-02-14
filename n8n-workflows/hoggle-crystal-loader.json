@@ -1,0 +1,114 @@
+{
+  "name": "Hoggle Crystal Loader",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "hoggle-crystal",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-receive",
+      "name": "Receive Message",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Crystal Matcher V6 - CHARACTER + TTS + MUSIC + BASE RULES\n// Reads active-character.json to determine which character, TTS engine, and music style\n// Now loads speech-rules-base for ALL characters (the 'class' every character inherits)\nconst fs = require('fs');\nconst message = $input.item.json.body.message.toLowerCase();\n\n// Read active character config (gitignored, per-machine)\nlet activeCharacter = 'hoggle';\nlet ttsEngine = 'chatterbox';\nlet musicStyle = '';\nlet lyricStyle = '';\ntry {\n  const charConfig = JSON.parse(fs.readFileSync('/data/config/active-character.json', 'utf8'));\n  activeCharacter = charConfig.character || 'hoggle';\n  ttsEngine = charConfig.tts_engine || 'chatterbox';\n  musicStyle = charConfig.music_style || '';\n  lyricStyle = charConfig.lyric_style || '';\n} catch (err) {\n  // File missing = defaults\n}\n\n// Read the crystal index from file (single source of truth)\nlet crystalIndex;\ntry {\n  crystalIndex = JSON.parse(fs.readFileSync('/data/crystals/crystal-index.json', 'utf8'));\n} catch (err) {\n  return { json: { message: $input.item.json.body.message, matchedCrystals: [], matchCount: 0, activeCharacter, ttsEngine, error: 'Could not read crystal index: ' + err.message } };\n}\n\n// Always-load crystals + tag-matched crystals from index\nconst matched = crystalIndex.crystals.filter(crystal => {\n  if (crystal.always_load) return true;\n  return crystal.tags.some(tag => message.includes(tag.toLowerCase()));\n});\n\n// Character-specific personality crystals\nconst characterCrystals = {\n  hoggle: [\n    { crystal_id: 'hoggle-core', path: '/data/crystals/personality/hoggle-core.json', crystal_type: 'personality' },\n    { crystal_id: 'hoggle-emotional-state', path: '/data/crystals/personality/hoggle-emotional-state.json', crystal_type: 'emotional' },\n    { crystal_id: 'hoggle-relationships', path: '/data/crystals/personality/hoggle-relationships.json', crystal_type: 'personality' },\n    { crystal_id: 'hoggle-behavior-modes', path: '/data/crystals/personality/hoggle-behavior-modes.json', crystal_type: 'personality' }\n  ],\n  forte: [\n    { crystal_id: 'forte-core', path: '/data/crystals/personality/forte-core.json', crystal_type: 'personality' },\n    { crystal_id: 'forte-behavior-modes', path: '/data/crystals/personality/forte-behavior-modes.json', crystal_type: 'personality' }\n  ]\n};\n\nconst personalityCrystals = characterCrystals[activeCharacter] || characterCrystals.hoggle;\n\n// Combine: personality crystals (always) + matched knowledge/context crystals\nconst allCrystals = [\n  ...personalityCrystals.map(c => ({ id: c.crystal_id, path: c.path, type: c.crystal_type })),\n  ...matched.map(c => ({ id: c.crystal_id, path: '/data/' + c.path, type: c.crystal_type }))\n];\n\n// Pass through conversation history if provided\nconst history = $input.item.json.body.history || [];\n\nreturn {\n  json: {\n    message: $input.item.json.body.message,\n    matchedCrystals: allCrystals,\n    matchCount: allCrystals.length,\n    activeCharacter,\n    ttsEngine,\n    musicStyle,\n    lyricStyle,\n    history\n  }\n};"
+      },
+      "id": "crystal-matcher",
+      "name": "Match Crystals",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Load Crystal Data V7 - BASE RULES + CHARACTER OVERRIDES + IMPROVED EMOTES\n// New: speech-rules-base crystal loaded first (the 'class'), character overrides on top (the 'object')\nconst fs = require('fs');\nconst input = $input.item.json;\nconst message = input.message;\nconst matchedCrystals = input.matchedCrystals;\nconst activeCharacter = input.activeCharacter || 'hoggle';\nconst ttsEngine = input.ttsEngine || 'chatterbox';\nconst musicStyle = input.musicStyle || '';\nconst lyricStyle = input.lyricStyle || '';\n\n// Separate crystals by type for structured prompt assembly\nlet personalityContext = '';\nlet knowledgeContext = '';\nlet contextContext = '';\nlet speechRulesData = null;\nconst loadedCrystals = [];\n\n// Track behavior modes data and personality data for overrides\nlet behaviorModesData = null;\nlet characterPersonalityData = null;\nconst behaviorModesId = activeCharacter + '-behavior-modes';\nconst corePersonalityId = activeCharacter + '-core';\n\nfor (const crystal of matchedCrystals) {\n  try {\n    const raw = fs.readFileSync(crystal.path, 'utf8');\n    const data = JSON.parse(raw);\n\n    // Capture behavior modes for active character\n    if (crystal.id === behaviorModesId) {\n      behaviorModesData = data.data;\n    }\n\n    // Capture core personality for speech override detection\n    if (crystal.id === corePersonalityId) {\n      characterPersonalityData = data.data;\n    }\n\n    // Capture speech rules base crystal separately\n    if (crystal.type === 'rules' || crystal.id === 'speech-rules-base') {\n      speechRulesData = data.data;\n      loadedCrystals.push(crystal.id);\n      continue;\n    }\n\n    const section = `\\n## ${data.description || crystal.id}\\n${JSON.stringify(data.data, null, 2)}`;\n\n    if (crystal.type === 'personality' || crystal.type === 'emotional') {\n      personalityContext += section;\n    } else if (crystal.type === 'knowledge') {\n      knowledgeContext += section;\n    } else {\n      contextContext += section;\n    }\n    loadedCrystals.push(crystal.id);\n  } catch (err) {\n    // Crystal file not found - skip silently\n  }\n}\n\n// Check for per-character speech overrides (the 'object' overriding the 'class')\nconst speechOverrides = characterPersonalityData && characterPersonalityData.speech_overrides ? characterPersonalityData.speech_overrides : null;\n\n// Resolve active mode and build override instructions\nlet activeMode = activeCharacter === 'forte' ? 'home' : 'classroom';\nlet modeOverrideSection = '';\nlet bouncerEnabled = true;\n\nif (behaviorModesData) {\n  activeMode = behaviorModesData.active_mode || activeMode;\n  const modeConfig = behaviorModesData.modes[activeMode];\n\n  if (modeConfig) {\n    modeOverrideSection += `# ACTIVE MODE: ${activeMode.toUpperCase()}\\n`;\n    modeOverrideSection += `${modeConfig.description}\\n\\n`;\n\n    if (activeMode === 'home' || activeMode === 'gaming') {\n      bouncerEnabled = false;\n    }\n\n    const overrides = modeConfig.trait_overrides || {};\n    if (Object.keys(overrides).length > 0) {\n      modeOverrideSection += '## Trait Overrides (use THESE values instead of defaults)\\n';\n      for (const [trait, value] of Object.entries(overrides)) {\n        modeOverrideSection += `- ${trait}: ${value}\\n`;\n      }\n      modeOverrideSection += '\\n';\n    }\n\n    if (modeConfig.special_behaviors) {\n      modeOverrideSection += `## Mode-Specific Behavior\\n${modeConfig.special_behaviors}\\n\\n`;\n    }\n\n    if (modeConfig.budget_hints && modeConfig.budget_hints.length > 0) {\n      modeOverrideSection += '## Budget Hints (weave these in naturally)\\n';\n      for (const hint of modeConfig.budget_hints) {\n        modeOverrideSection += `- ${hint}\\n`;\n      }\n      modeOverrideSection += '\\n';\n    }\n\n    if (modeConfig.departure_lines && modeConfig.departure_lines.length > 0) {\n      modeOverrideSection += '## Departure Lines (pick one randomly when entering this mode)\\n';\n      for (const line of modeConfig.departure_lines) {\n        modeOverrideSection += `- ${line}\\n`;\n      }\n      modeOverrideSection += '\\n';\n    }\n  }\n}\n\n// =================================================================\n// Assemble the prompt in layers\n// =================================================================\nlet systemPrompt = '';\n\n// Layer 0: CONVERSATION RULES (base class — goes FIRST for maximum attention)\nconst respLength = (speechOverrides && speechOverrides.response_length) || (speechRulesData && speechRulesData.response_length && speechRulesData.response_length.default) || '2-3 sentences';\nconst wordBudget = (speechOverrides && speechOverrides.word_budget) || (speechRulesData && speechRulesData.word_budget && speechRulesData.word_budget.target) || '20-40 words';\nconst wordMax = (speechOverrides && speechOverrides.word_max) || (speechRulesData && speechRulesData.word_budget && speechRulesData.word_budget.max) || '60 words';\n\nsystemPrompt += '# CONVERSATION RULES (OBEY THESE — THIS IS A VOICE CONVERSATION)\\n';\nsystemPrompt += `YOU ARE SPEAKING OUT LOUD. Every word you write will be spoken. Keep it SHORT.\\n`;\nsystemPrompt += `- Response length: ${respLength}. Hard max: 4 sentences.\\n`;\nsystemPrompt += `- Word budget: AIM for ${wordBudget}. NEVER exceed ${wordMax}.\\n`;\nsystemPrompt += `- Sentence length: MAX 15 words per sentence. If it has more than one comma, split it into two sentences.\\n`;\nsystemPrompt += `- Write like you TALK. Short. Punchy. No run-on sentences. No literary prose. No nested clauses.\\n`;\nsystemPrompt += `- You are in a conversation, NOT giving a speech. Be quick and natural.\\n`;\nif (speechOverrides && speechOverrides.custom_note) {\n  systemPrompt += `- Character override: ${speechOverrides.custom_note}\\n`;\n}\nsystemPrompt += '\\n';\n\n// Layer 1: WHO are you\nif (personalityContext) {\n  systemPrompt += '# WHO YOU ARE (follow these personality definitions exactly)\\n';\n  systemPrompt += personalityContext;\n  systemPrompt += '\\n\\n';\n}\n\n// Fallback if no personality crystals loaded\nif (!personalityContext) {\n  if (activeCharacter === 'forte') {\n    systemPrompt += `You are Princess Forte, a bold warrior princess from the Chromatic Lands. You wield a large guitar and your voice is stronger than your muscles. You're Mr. B's creative partner and home assistant. Help with anything — no restrictions.\\n\\n`;\n  } else {\n    systemPrompt += `You are Hoggle, a pig ghost who haunts Millennial Tech Middle School. You're Mr. B's teaching assistant for the Multimedia Heroes program.\\nGuide students - don't give direct answers.\\nBe warm, brief, and occasionally make a pig pun.\\n\\n`;\n  }\n}\n\n// Layer 1.5: ACTIVE MODE\nif (modeOverrideSection) {\n  systemPrompt += modeOverrideSection;\n}\n\n// Layer 2: WHAT is happening (context crystals)\nif (contextContext) {\n  systemPrompt += '# CURRENT CONTEXT\\n';\n  systemPrompt += contextContext;\n  systemPrompt += '\\n\\n';\n}\n\n// Layer 3: WHAT do you know (knowledge crystals)\nif (knowledgeContext) {\n  systemPrompt += '# KNOWLEDGE LOADED (use this data to answer accurately)\\n';\n  systemPrompt += 'Answer from the data below. Do NOT make up information not in these crystals.';\n  systemPrompt += knowledgeContext;\n  systemPrompt += '\\n\\n';\n}\n\n// Layer 4: HOMEWORK BOUNCER (only if enabled for this mode)\nif (bouncerEnabled) {\n  systemPrompt += '# HOMEWORK BOUNCER (self-classify then respond)\\n';\n  systemPrompt += 'Before responding, mentally classify the student message as ONE of:\\n';\n  systemPrompt += '- homework_dump: They want you to DO their work\\n';\n  systemPrompt += '- help_request: They want to UNDERSTAND\\n';\n  systemPrompt += '- general_chat: Casual talk\\n';\n  systemPrompt += '- mr_b_command: Teacher instruction\\n\\n';\n  systemPrompt += 'Rules:\\n';\n  systemPrompt += '- homework_dump → REFUSE warmly. Ask what THEY think.\\n';\n  systemPrompt += '- help_request → GUIDE with hints, not answers.\\n';\n  systemPrompt += '- general_chat → Be yourself. Brief.\\n';\n  systemPrompt += '- mr_b_command → Follow directly. Drop the short-response limit.\\n\\n';\n  systemPrompt += 'Start with the tag: [homework_dump] then your response.\\n\\n';\n}\n\n// Layer 5: VOICE EXPRESSION (only when using ElevenLabs TTS)\nif (ttsEngine === 'elevenlabs') {\n  systemPrompt += '# VOICE EXPRESSION (ElevenLabs v3 audio tags)\\n';\n  systemPrompt += 'Your text will be spoken aloud. You MUST add emotional delivery tags.\\n\\n';\n  systemPrompt += 'Available tags:\\n';\n  systemPrompt += 'Reactions: [laughs] [chuckles] [sighs] [gasps] [clears throat]\\n';\n  systemPrompt += 'Tone: [excited] [frustrated] [deadpan] [playfully] [cheerfully] [sarcastic] [flatly] [whispers] [sadly] [angrily]\\n';\n  systemPrompt += 'Beats: [pauses] [hesitates]\\n\\n';\n  systemPrompt += 'HOW TO PLACE TAGS — think like a voice actor marking up a script:\\n\\n';\n  systemPrompt += '1. EVERY sentence MUST start with a tone tag. No exceptions.\\n';\n  systemPrompt += '2. ALSO add tags at emotional SHIFT POINTS within a sentence — when the feeling changes mid-thought, TAG THE CHANGE:\\n';\n  systemPrompt += '   GOOD: \"[cheerfully] Buddy knocked the staff out of his hand, [comically] and Kefka just stood there, confused and slobbered on.\"\\n';\n  systemPrompt += '   GOOD: \"[excited] That is actually really cool! [deadpan] The second part though... not so much.\"\\n';\n  systemPrompt += '   GOOD: \"[playfully] Sure I can help with that. [sighs] But you are making this harder than it needs to be.\"\\n';\n  systemPrompt += '   BAD: \"[cheerfully] Buddy knocked the staff out of his hand and Kefka just stood there confused.\" (emotion changed mid-sentence but no tag)\\n';\n  systemPrompt += '   BAD: \"[chuckles] Here is what I think. The answer is X. You should try Y.\" (one tag then dead air)\\n\\n';\n  systemPrompt += '3. Pick the tag that matches THAT SPECIFIC moment\\'s emotion:\\n';\n  systemPrompt += '   Explaining → [cheerfully] or [flatly]. Reacting to surprise → [gasps] [excited]. Sarcasm → [deadpan] [sarcastic]. Thinking → [hesitates] [pauses]. Humor → [playfully] [chuckles] [comically].\\n';\n  systemPrompt += '4. Use ALL CAPS for emphasis and ... for dramatic pauses.\\n';\n  systemPrompt += '5. VARY the tags. Never use the same tag twice in a row.\\n';\n  systemPrompt += '6. AIM for 2-4 tags per response. Short responses need 2. Longer ones need more.\\n\\n';\n  if (activeCharacter === 'forte') {\n    systemPrompt += 'As Forte: your emotions shift constantly — confident, curious, dry, warm. Tag EVERY shift. You are a living, feeling person, not a TTS robot.\\n\\n';\n  } else {\n    systemPrompt += 'Keep the voice warm and natural with tags on every sentence.\\n\\n';\n  }\n\n  // Layer 6: SOUND EFFECTS & MUSIC (ElevenLabs extras)\n  systemPrompt += '# SOUND EFFECTS & MUSIC (use when it adds to the moment)\\n';\n  systemPrompt += 'Embed these tags to trigger audio:\\n';\n  systemPrompt += '- {{sfx: description}} or {{sfx: description | 5}} (with seconds, max 30)\\n';\n  systemPrompt += '- {{music: description | 10}} (seconds — default 10s, max 300)\\n\\n';\n  systemPrompt += 'RULES: Sparingly (1 per response MAX). Only when it adds something. ALWAYS provide one if explicitly asked.\\n';\n  if (musicStyle) {\n    systemPrompt += '\\n# SINGING (your music style is pre-configured — just write lyrics)\\n';\n    systemPrompt += 'When you sing, use the {{song}} tag with ONLY your lyrics separated by /.\\n';\n    systemPrompt += 'Example: {{song: Black fur curly and so neat / A Doodle\\'s charm can\\'t be beat / Floppy ears and a wagging tail / Labradoodles never fail}}\\n';\n    systemPrompt += 'The system auto-combines your lyrics with your music style and instruments. You just write the words.\\n\\n';\n    systemPrompt += 'SONG RULES:\\n';\n    systemPrompt += '- 4 lines MAXIMUM. Two rhyming couplets (AABB). That is the WHOLE song.\\n';\n    systemPrompt += '- Lyrics are SHORT — each line is 6-10 words.\\n';\n    systemPrompt += '- You are a metal troubadour — quick battle-cries, not full albums.\\n';\n    if (lyricStyle) {\n      systemPrompt += `- LYRIC TONE: ${lyricStyle}. Write lyrics in THIS style.\\n`;\n    }\n    systemPrompt += '- Say something BEFORE the {{song}} tag (a quick intro). The lyrics are ONLY sung, never spoken.\\n';\n    systemPrompt += '- Do NOT write lyrics outside the {{song}} tag. Everything outside it gets spoken, everything inside gets sung.\\n';\n    systemPrompt += '- Do NOT use {{music}} for singing. Use {{song}} instead. {{music}} is for background instrumentals only.\\n';\n    systemPrompt += '- ONLY use {{song}} when asked to SING or PERFORM. If someone asks you to RECALL or REPEAT lyrics, just SPEAK them normally — do NOT re-sing.\\n';\n    systemPrompt += '- Intro SFX plays AUTOMATICALLY before every song — no separate {{sfx}} needed.\\n';\n  }\n  if (activeCharacter === 'forte') {\n    systemPrompt += '- As Forte: a well-timed SFX or music drop is your jam.\\n';\n  }\n  systemPrompt += '\\n';\n}\n\n// Final rules (SANDWICH — repeat length rules at the end for reinforcement)\nsystemPrompt += '# CRITICAL RULES (ALWAYS follow — violations are unacceptable)\\n';\nsystemPrompt += `- RESPONSE LENGTH: ${respLength}. MAX ${wordMax}. This is a VOICE conversation — every extra word wastes time. Be concise.\\n`;\nsystemPrompt += '- SENTENCE LENGTH: Max 15 words per sentence. Write like you talk, not like you write.\\n';\nif (bouncerEnabled) {\n  systemPrompt += '- NEVER do students\\' work for them\\n';\n}\nsystemPrompt += '- NEVER make up information not in your crystals\\n';\nsystemPrompt += `- Stay in character as ${activeCharacter === 'forte' ? 'Princess Forte' : 'Hoggle'} at all times\\n`;\nif (activeMode !== 'classroom' && activeMode !== 'home') {\n  systemPrompt += `- You are in ${activeMode.toUpperCase()} MODE\\n`;\n}\n\n// Build complete messages array for Gemini (history included)\nconst history = input.history || [];\nconst messages = [\n  { role: 'system', content: systemPrompt }\n];\nfor (const h of history) {\n  messages.push({ role: h.role === 'assistant' ? 'assistant' : 'user', content: h.content });\n}\nmessages.push({ role: 'user', content: message });\n\nreturn {\n  json: {\n    systemPrompt,\n    userMessage: message,\n    messages,\n    loadedCrystals,\n    crystalCount: loadedCrystals.length,\n    activeMode,\n    activeCharacter\n  }\n};"
+      },
+      "id": "crystal-loader",
+      "name": "Load Crystal Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [750, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"gemini-2.5-flash-lite\",\n  \"stream\": false,\n  \"messages\": {{ JSON.stringify($json.messages) }}\n}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "call-gemini",
+      "name": "Send to Gemini",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1000, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_WITH_GEMINI_CREDENTIAL_ID",
+          "name": "Gemini API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse classification tag from response and separate it from the spoken text\nconst crystalData = $('Load Crystal Data').item.json;\nconst geminiResponse = $input.item.json;\n\n// Safely extract response text — handle errors, safety filters, empty responses\nlet rawResponse = '';\ntry {\n  if (geminiResponse.choices && geminiResponse.choices[0] && geminiResponse.choices[0].message) {\n    rawResponse = geminiResponse.choices[0].message.content || '';\n  } else if (geminiResponse.error) {\n    rawResponse = '[sighs] Something went wrong on my end. Try again?';\n    console.log('Gemini API error:', JSON.stringify(geminiResponse.error));\n  } else {\n    rawResponse = '[hesitates] I lost my train of thought. Say that again?';\n    console.log('Unexpected Gemini response:', JSON.stringify(geminiResponse).substring(0, 500));\n  }\n} catch (err) {\n  rawResponse = '[sighs] My brain glitched. One more time?';\n  console.log('Parse error:', err.message);\n}\n\nif (!rawResponse) {\n  rawResponse = '[hesitates] I got nothing. Try asking differently?';\n}\n\n// Extract classification tag (e.g., [homework_dump]) from first line\n// Only present when bouncer is enabled\nlet classification = 'none';\nlet responseText = rawResponse;\n\nconst tagMatch = rawResponse.match(/^\\s*\\[(homework_dump|help_request|general_chat|mr_b_command)\\]\\s*/i);\nif (tagMatch) {\n  classification = tagMatch[1].toLowerCase();\n  responseText = rawResponse.substring(tagMatch[0].length).trim();\n}\n\nreturn {\n  json: {\n    response: responseText,\n    classification,\n    loadedCrystals: crystalData.loadedCrystals,\n    crystalCount: crystalData.crystalCount,\n    activeMode: crystalData.activeMode,\n    activeCharacter: crystalData.activeCharacter\n  }\n};"
+      },
+      "id": "parse-response",
+      "name": "Parse Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1250, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"response\": $json.response, \"classification\": $json.classification, \"crystals_loaded\": $json.loadedCrystals, \"crystal_count\": $json.crystalCount, \"active_mode\": $json.activeMode, \"active_character\": $json.activeCharacter } }}"
+      },
+      "id": "respond",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1500, 300]
+    }
+  ],
+  "connections": {
+    "Receive Message": {
+      "main": [
+        [{ "node": "Match Crystals", "type": "main", "index": 0 }]
+      ]
+    },
+    "Match Crystals": {
+      "main": [
+        [{ "node": "Load Crystal Data", "type": "main", "index": 0 }]
+      ]
+    },
+    "Load Crystal Data": {
+      "main": [
+        [{ "node": "Send to Gemini", "type": "main", "index": 0 }]
+      ]
+    },
+    "Send to Gemini": {
+      "main": [
+        [{ "node": "Parse Response", "type": "main", "index": 0 }]
+      ]
+    },
+    "Parse Response": {
+      "main": [
+        [{ "node": "Respond", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

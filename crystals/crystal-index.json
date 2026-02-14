@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "updated": "2026-02-05",
+  "description": "Master index of all Memory Crystals - used by n8n to determine which crystals to load",
+  "crystals": [
+    {
+      "crystal_id": "speech-rules-base",
+      "crystal_type": "rules",
+      "path": "crystals/speech-rules-base.json",
+      "tags": [],
+      "description": "Base conversation rules all characters inherit (class). Override per-character with speech_overrides.",
+      "always_load": true
+    },
+    {
+      "crystal_id": "expression-week",
+      "crystal_type": "knowledge",
+      "path": "crystals/knowledge/expression-week.json",
+      "tags": ["expression", "week", "assignments", "drawing", "poster", "essay", "song", "parody", "cover", "guitar", "piano", "drums", "game", "interactive", "tribute", "film", "video", "amv", "comic", "mp", "rubric"],
+      "description": "Expression Week 12 assignments with rubrics and MP values",
+      "always_load": false
+    },
+    {
+      "crystal_id": "aed-career-standards",
+      "crystal_type": "knowledge",
+      "path": "crystals/knowledge/aed-career-standards.json",
+      "tags": ["standards", "AED", "career", "cluster", "CTE", "pathway", "arts", "AV", "technology"],
+      "description": "AED Career Cluster Standards with codes and descriptions",
+      "always_load": false
+    },
+    {
+      "crystal_id": "multimedia-heroes-rules",
+      "crystal_type": "knowledge",
+      "path": "crystals/knowledge/multimedia-heroes-rules.json",
+      "tags": ["rules", "mp", "points", "timmy", "coins", "rank", "level", "heroes", "program"],
+      "description": "Multimedia Heroes program rules, MP system, ranks",
+      "always_load": false
+    },
+    {
+      "crystal_id": "today",
+      "crystal_type": "context",
+      "path": "crystals/context/today.json",
+      "tags": [],
+      "description": "Today's schedule, announcements, and current focus",
+      "always_load": true
+    },
+    {
+      "crystal_id": "classroom-rules",
+      "crystal_type": "context",
+      "path": "crystals/context/classroom-rules.json",
+      "tags": ["rules", "procedures", "behavior", "expectations"],
+      "description": "Classroom rules and procedures",
+      "always_load": false
+    },
+    {
+      "crystal_id": "roster",
+      "crystal_type": "context",
+      "path": "crystals/context/roster.json",
+      "tags": ["roster", "student", "students", "name", "skey", "period", "class"],
+      "description": "Student roster for name/skey lookups (LOCAL ONLY)",
+      "always_load": false
+    }
+  ]
+}

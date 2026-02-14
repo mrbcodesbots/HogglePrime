@@ -1,0 +1,57 @@
+{
+  "whisper": {
+    "model": "large-v3-turbo",
+    "device": "cuda",
+    "compute_type": "float16",
+    "beam_size": 5,
+    "language": "en",
+    "vad_filter": true,
+    "_notes": "large-v3-turbo is the sweet spot: fast as base, accurate as medium, ~6GB VRAM"
+  },
+
+  "elevenlabs": {
+    "model_id": "eleven_turbo_v2_5",
+    "output_format": "mp3_44100_128",
+    "voice_settings": {
+      "stability": 0.5
+    },
+    "_notes": "Default model is turbo (fastest). For audio tags ([laughs] etc), set elevenlabs_model_id to eleven_v3 in active-character.json. v3 stability: 0.0=Creative, 0.5=Natural, 1.0=Robust.",
+    "_sfx_notes": "SFX and music use the same API key. Gemini embeds {{sfx: desc}} and {{music: desc | 30}} tags. SFX billed per generation."
+  },
+
+  "acestep": {
+    "api_url": "http://localhost:7860",
+    "inference_steps": 8,
+    "guidance_scale": 4.0,
+    "batch_size": 1,
+    "audio_format": "wav",
+    "voice_reference": null,
+    "_notes": "ACE-Step 1.5 local music generation. Run: docker run --gpus all -p 7860:7860 --name acestep ghcr.io/dotnetautor/ace-step-1.5-docker:latest. voice_reference: path to audio file for vocal style (null = default). Set music_engine to 'acestep' in active-character.json."
+  },
+
+  "audiogen": {
+    "api_url": "http://localhost:7861",
+    "_notes": "Meta AudioGen (AudioCraft) local SFX generation. Build: docker build -t audiogen-server docker/audiogen/ then run: docker run --gpus all -p 7861:7861 -v audiogen_cache:/root/.cache --name audiogen audiogen-server. Set sfx_engine to 'audiogen' in active-character.json."
+  },
+
+  "chatterbox": {
+    "reference_voice": "config/voice/hoggle-reference.mp3",
+    "device": "cuda",
+    "_notes": "Fallback TTS when ElevenLabs not configured. reference_voice path relative to project root."
+  },
+
+  "audio": {
+    "sample_rate": 16000,
+    "channels": 1,
+    "input_device": null,
+    "ptt_key": "scroll lock",
+    "ptt_mode": "hold",
+    "_ptt_notes": "Use 'scroll lock' for foot pedal (most USB pedals map to this). Change to any key name from the keyboard library. Hold mode = talk while held.",
+    "_device_notes": "input_device: null = system default. Set to device index (number) or part of device name (string) from --list-audio. Example: 32 or 'Obsidian Night'. Use --device flag to override at launch."
+  },
+
+  "n8n": {
+    "webhook_url": "http://localhost:5678/webhook/hoggle-crystal",
+    "timeout": 30
+  }
+}

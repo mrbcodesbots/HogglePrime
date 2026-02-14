@@ -1,0 +1,82 @@
+{
+  "name": "Hoggle Roster Sync",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 30
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Every 30 Minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [250, 200]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "hoggle-roster-sync",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "On-Demand Sync",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 450]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.HOGGLE_GAS_URL || 'PASTE_YOUR_GAS_WEB_APP_URL_HERE' }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"action\": \"hoggle-roster\",\n  \"secret\": \"{{ $env.HOGGLE_GAS_SECRET || 'PASTE_YOUR_SHARED_SECRET_HERE' }}\"\n}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "call-gas",
+      "name": "Fetch Roster from GAS",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [550, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Save roster to local crystal file and build lookup tables\nconst fs = require('fs');\nconst rosterPath = '/data/crystals/context/roster.json';\n\nconst gasResponse = $input.item.json;\n\nif (!gasResponse.success) {\n  return {\n    json: {\n      success: false,\n      error: 'GAS returned error: ' + (gasResponse.error || 'unknown'),\n      message: 'Roster sync failed. Is the GAS endpoint configured?'\n    }\n  };\n}\n\n// Build the roster crystal\nconst rosterCrystal = {\n  crystal_id: 'roster',\n  crystal_type: 'context',\n  version: 1,\n  created: '2026-02-11',\n  updated: new Date().toISOString().split('T')[0],\n  description: 'Student roster for name lookups (LOCAL ONLY - never send to external APIs)',\n  tags: ['roster', 'students', 'skey'],\n  data: {\n    synced: gasResponse.synced,\n    student_count: gasResponse.count,\n    students_without_overlord_token: gasResponse.students_without_overlord_token || 0,\n\n    // Flat student list\n    students: gasResponse.students,\n\n    // Lookup tables for fast access\n    by_skey: {},\n    by_period: {}\n  }\n};\n\n// Build lookup: skey → student\nfor (const student of gasResponse.students) {\n  rosterCrystal.data.by_skey[student.skey] = {\n    name: student.name,\n    periods: student.periods,\n    primary_period: student.primary_period\n  };\n\n  // Build lookup: period → [students]\n  for (const period of student.periods) {\n    const key = 'period_' + period;\n    if (!rosterCrystal.data.by_period[key]) {\n      rosterCrystal.data.by_period[key] = [];\n    }\n    rosterCrystal.data.by_period[key].push({\n      skey: student.skey,\n      name: student.name\n    });\n  }\n}\n\n// Write to file\ntry {\n  fs.writeFileSync(rosterPath, JSON.stringify(rosterCrystal, null, 2), 'utf8');\n} catch (err) {\n  return {\n    json: {\n      success: false,\n      error: 'Could not write roster crystal: ' + err.message\n    }\n  };\n}\n\n// Count per period\nconst periodCounts = {};\nfor (const [key, students] of Object.entries(rosterCrystal.data.by_period)) {\n  periodCounts[key] = students.length;\n}\n\nreturn {\n  json: {\n    success: true,\n    message: `Roster synced: ${gasResponse.count} students cached locally`,\n    synced: gasResponse.synced,\n    student_count: gasResponse.count,\n    period_counts: periodCounts,\n    students_without_overlord_token: gasResponse.students_without_overlord_token || 0\n  }\n};"
+      },
+      "id": "save-roster",
+      "name": "Save Roster Crystal",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [800, 300]
+    }
+  ],
+  "connections": {
+    "Every 30 Minutes": {
+      "main": [
+        [{ "node": "Fetch Roster from GAS", "type": "main", "index": 0 }]
+      ]
+    },
+    "On-Demand Sync": {
+      "main": [
+        [{ "node": "Fetch Roster from GAS", "type": "main", "index": 0 }]
+      ]
+    },
+    "Fetch Roster from GAS": {
+      "main": [
+        [{ "node": "Save Roster Crystal", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

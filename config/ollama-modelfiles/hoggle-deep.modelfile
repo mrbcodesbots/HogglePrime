@@ -1,0 +1,18 @@
+# Hoggle Deep - Document analysis and complex queries
+# Context: 32,768 tokens (~24,000 words)
+# Use for: RAG queries, document analysis, complex explanations
+
+FROM qwen2.5:14b-instruct
+
+# Large context for document processing
+PARAMETER num_ctx 32768
+
+# Slightly lower temperature for accuracy with documents
+PARAMETER temperature 0.6
+
+# Allow comprehensive responses
+PARAMETER num_predict 2048
+
+# Stop sequences
+PARAMETER stop "<|im_end|>"
+PARAMETER stop "<|endoftext|>"

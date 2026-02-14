@@ -1,0 +1,17 @@
+{
+  "crystal_id": "roster",
+  "crystal_type": "context",
+  "version": 1,
+  "created": "2026-02-11",
+  "updated": "2026-02-11",
+  "description": "Student roster for name lookups (LOCAL ONLY - never send to external APIs)",
+  "tags": ["roster", "students", "skey"],
+  "data": {
+    "synced": null,
+    "student_count": 0,
+    "students": [],
+    "by_skey": {},
+    "by_period": {},
+    "setup_instructions": "This crystal gets populated by the Hoggle Roster Sync n8n workflow. See scripts/gas-hoggle-api.gs for the GAS endpoint to add to your Multimedia Heroes project."
+  }
+}

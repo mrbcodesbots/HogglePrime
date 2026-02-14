@@ -1,0 +1,125 @@
+{
+  "crystal_id": "expression-week",
+  "crystal_type": "knowledge",
+  "version": 1,
+  "created": "2026-02-03",
+  "updated": "2026-02-05",
+  "description": "Expression Week assignments, rubrics, and MP values - Feb 3-7, 2026",
+  "tags": ["expression", "assignments", "drawing", "song", "comic", "game", "film", "essay", "mp", "rubric"],
+  "data": {
+    "event": "Expression Week",
+    "dates": "February 3-7, 2026",
+    "class": "MTM Media Arts",
+    "theme": "Express yourself! Share what YOU love and care about.",
+    "goal": "Earn at least 100 MP this week",
+    "total_mp_available": "635+",
+    "total_assignments": 12,
+    "assignments": [
+      {
+        "number": 1,
+        "topic": "Express Drawz",
+        "name": "What I Love Drawing",
+        "max_mp": 40,
+        "description": "Draw something meaningful to you - a character, hobby, family member, pet, or anything you care about. Show us what's in your heart through art.",
+        "achievements": [
+          {"name": "Canvas Ready", "mp": 3, "description": "Artwork on uncrumpled paper with name on back"},
+          {"name": "Subject Present", "mp": 5, "description": "Main subject clearly depicted and recognizable"},
+          {"name": "Full Composition", "mp": 5, "description": "Drawing uses at least 75% of paper"},
+          {"name": "Color Applied", "mp": 5, "description": "Color medium used (crayon, marker, pencil, etc.)"},
+          {"name": "Background Exists", "mp": 5, "description": "Environment/setting drawn behind subject"},
+          {"name": "Shading Used", "mp": 5, "description": "Visible shading/shadows on at least 2 elements"},
+          {"name": "Personal Note", "mp": 2, "description": "Written sentence on back explaining why this matters to you"},
+          {"name": "Above & Beyond", "mp": 10, "description": "Exceptional effort, detail, or emotional impact (Teacher Judgment)"}
+        ]
+      },
+      {
+        "number": 2,
+        "topic": "Express Drawz",
+        "name": "Fan Tribute Poster",
+        "max_mp": 50,
+        "description": "Design a poster to celebrate something you're passionate about.",
+        "achievements": "TODO - Mr. B to fill in from full document"
+      },
+      {
+        "number": 3,
+        "topic": "Express Wordz",
+        "name": "Why I Love ___ Essay",
+        "max_mp": 30,
+        "description": "Write about why you love something meaningful to you.",
+        "achievements": "TODO - Mr. B to fill in from full document"
+      },
+      {
+        "number": 4,
+        "topic": "Express Tunez",
+        "name": "Love Letter Song",
+        "max_mp": 55,
+        "description": "Create a song expressing what matters to you.",
+        "achievements": "TODO - Mr. B to fill in from full document"
+      },
+      {
+        "number": 5,
+        "topic": "Express Tunez",
+        "name": "Passion Parody",
+        "max_mp": 45,
+        "description": "Create a parody song about something you're passionate about.",
+        "achievements": "TODO - Mr. B to fill in from full document"
+      },
+      {
+        "number": 6,
+        "topic": "Express Coverz",
+        "name": "Cover with Heart (Guitar/Piano/Bass)",
+        "max_mp": 65,
+        "description": "Perform a cover of a song that means something to you.",
+        "achievements": "TODO - Mr. B to fill in from full document"
+      },
+      {
+        "number": 7,
+        "topic": "Express Coverz",
+        "name": "Beat Your Heart Out (Drums)",
+        "max_mp": 65,
+        "description": "Perform a drum cover with passion.",
+        "achievements": "TODO - Mr. B to fill in from full document"
+      },
+      {
+        "number": 8,
+        "topic": "Express Gamez",
+        "name": "About Me Interactive",
+        "max_mp": 50,
+        "description": "Create an interactive 'about me' project.",
+        "achievements": "TODO - Mr. B to fill in from full document"
+      },
+      {
+        "number": 9,
+        "topic": "Express Gamez",
+        "name": "Fan Game Tribute",
+        "max_mp": 70,
+        "description": "Build a game tribute to something you love.",
+        "achievements": "TODO - Mr. B to fill in from full document"
+      },
+      {
+        "number": 10,
+        "topic": "Express Filmz",
+        "name": "Why I Love This Video Essay",
+        "max_mp": 60,
+        "description": "Create a video essay about something you're passionate about.",
+        "achievements": "TODO - Mr. B to fill in from full document"
+      },
+      {
+        "number": 11,
+        "topic": "Express Filmz",
+        "name": "AMV / Fan Edit",
+        "max_mp": 55,
+        "description": "Create an AMV or fan edit celebrating something you love.",
+        "achievements": "TODO - Mr. B to fill in from full document"
+      },
+      {
+        "number": 12,
+        "topic": "Express Comix",
+        "name": "Expression Comic",
+        "max_mp": 50,
+        "description": "Create a comic expressing what matters to you.",
+        "achievements": "TODO - Mr. B to fill in from full document"
+      }
+    ]
+  }
+}

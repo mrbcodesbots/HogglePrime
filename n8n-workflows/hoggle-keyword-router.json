@@ -1,0 +1,179 @@
+{
+  "name": "Hoggle Keyword Router",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "hoggle",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-receive",
+      "name": "Receive Message",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "technical-keywords",
+              "leftValue": "={{ $json.body.message }}",
+              "rightValue": "construct|sprite|behavior|event sheet|layout|collision|animation|plugin|binary|convert|debug|error|code|function",
+              "operator": {
+                "type": "string",
+                "operation": "regex"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "id": "check-technical",
+      "name": "Technical Keywords?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [500, 200]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "standards-keywords",
+              "leftValue": "={{ $json.body.message }}",
+              "rightValue": "standards|district|rubric|curriculum|AED|career|cluster|grading|assignment",
+              "operator": {
+                "type": "string",
+                "operation": "regex"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "id": "check-standards",
+      "name": "Standards Keywords?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [500, 450]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:3000/api/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"hoggle-knowledge\",\n  \"stream\": false,\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"{{ $('Receive Message').item.json.body.message }}\"\n    }\n  ]\n}",
+        "options": {}
+      },
+      "id": "call-hoggle-rag",
+      "name": "Hoggle + Knowledge Base",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [800, 200],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_WITH_YOUR_CREDENTIAL_ID",
+          "name": "Open WebUI Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:3000/api/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"hoggle-fast\",\n  \"stream\": false,\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"{{ $('Receive Message').item.json.body.message }}\"\n    }\n  ]\n}",
+        "options": {}
+      },
+      "id": "call-hoggle-fast",
+      "name": "Hoggle Fast (No RAG)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [800, 450],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_WITH_YOUR_CREDENTIAL_ID",
+          "name": "Open WebUI Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"response\": $json.choices[0].message.content, \"model\": \"hoggle-knowledge\", \"used_rag\": true } }}"
+      },
+      "id": "respond-rag",
+      "name": "Respond (RAG)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1050, 200]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"response\": $json.choices[0].message.content, \"model\": \"hoggle-fast\", \"used_rag\": false } }}"
+      },
+      "id": "respond-fast",
+      "name": "Respond (Fast)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1050, 450]
+    }
+  ],
+  "connections": {
+    "Receive Message": {
+      "main": [
+        [
+          { "node": "Technical Keywords?", "type": "main", "index": 0 },
+          { "node": "Standards Keywords?", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Technical Keywords?": {
+      "main": [
+        [{ "node": "Hoggle + Knowledge Base", "type": "main", "index": 0 }],
+        [{ "node": "Hoggle Fast (No RAG)", "type": "main", "index": 0 }]
+      ]
+    },
+    "Standards Keywords?": {
+      "main": [
+        [{ "node": "Hoggle + Knowledge Base", "type": "main", "index": 0 }],
+        []
+      ]
+    },
+    "Hoggle + Knowledge Base": {
+      "main": [
+        [{ "node": "Respond (RAG)", "type": "main", "index": 0 }]
+      ]
+    },
+    "Hoggle Fast (No RAG)": {
+      "main": [
+        [{ "node": "Respond (Fast)", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

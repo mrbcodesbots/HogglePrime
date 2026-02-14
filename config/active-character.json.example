@@ -1,0 +1,37 @@
+{
+  "_note": "Copy this to active-character.json and customize per machine.",
+  "_note2": "tts_engine: 'elevenlabs' (fast, cloud) or 'chatterbox' (free, local)",
+
+  "_school_example": {
+    "character": "hoggle",
+    "tts_engine": "chatterbox",
+    "voice_reference": "config/voice/hoggle-reference.mp3"
+  },
+
+  "_home_example": {
+    "character": "forte",
+    "tts_engine": "elevenlabs",
+    "elevenlabs_api_key": "sk_your_key_here",
+    "elevenlabs_voice_id": "your_voice_id_here",
+    "elevenlabs_model_id": "eleven_v3",
+    "elevenlabs_voice_settings": {
+      "stability": 0.5
+    },
+    "voice_reference": "config/voice/forte-reference.mp3",
+
+    "sfx_engine": "audiogen",
+    "music_engine": "acestep",
+    "music_style": "Solo shredding electric guitar, fantasy metal, fast and heavy, powerful female belting vocals singing short rhyming lyrics, no drums, no bass, no keyboards, no orchestra, no backing band, just raw voice and guitar",
+    "lyric_style": "90s grunge, raw and emotional, conversational tone, imperfect and real, like Nirvana or Alice in Chains — not polished pop or nursery rhymes",
+    "music_default_duration": 10,
+    "music_instrumental": false,
+    "music_intro_sfx": "Electric guitar being plugged into a tube amplifier with feedback buzz then a loud power chord",
+
+    "sfx_default_duration": null,
+    "sfx_prompt_influence": 0.3,
+
+    "_notes": "eleven_v3 REQUIRED for audio tags. v3 stability: 0.0=Creative, 0.5=Natural, 1.0=Robust.",
+    "_music_notes": "music_engine: 'acestep' (local, fast, voice clone) or 'elevenlabs' (cloud). music_style: genre/instruments description. lyric_style: tells Gemini HOW to write lyrics. music_intro_sfx: auto-plays SFX before songs. music_default_duration: seconds for {{music}} instrumentals.",
+    "_sfx_notes": "sfx_engine: 'audiogen' (local, Docker) or 'elevenlabs' (cloud). sfx_default_duration: null=auto-detect from prompt. sfx_prompt_influence: 0.0-1.0 (ElevenLabs only, higher=follows prompt more closely)."
+  }
+}

@@ -1,0 +1,47 @@
+# Voice Pipeline Dependencies for Hoggle
+# ==========================================
+#
+# IMPORTANT: Do NOT just run `pip install -r requirements-voice.txt`!
+# Chatterbox TTS requires a special install order. See below.
+#
+# ---- INSTALL ORDER (Python 3.12, CUDA 12.x) ----
+#
+# Step 1: Create venv
+#   py -3.12 -m venv venv-voice
+#   .\venv-voice\Scripts\activate
+#   python -m pip install --upgrade pip
+#
+# Step 2: Install PyTorch with CUDA
+#   pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu121
+#
+# Step 3: Install Chatterbox (skip its strict dependency pins)
+#   pip install chatterbox-tts --no-deps
+#
+# Step 4: Install Chatterbox's actual dependencies manually
+#   pip install soundfile tokenizers conformer einops
+#   pip install librosa==0.11.0 omegaconf safetensors==0.5.3 transformers==4.46.3 diffusers==0.29.0 pyloudnorm resemble-perth==1.0.1 s3tokenizer pykakasi==2.3.0
+#
+# Step 5: Install the rest of the pipeline deps
+#   pip install -r requirements-voice.txt
+#
+# ---- END INSTALL ORDER ----
+
+# Speech-to-Text (Whisper on GPU)
+faster-whisper>=1.0.0
+
+# Audio recording and playback
+sounddevice>=0.4.6
+soundfile>=0.12.1
+numpy>=1.24.0
+
+# Push-to-talk keyboard detection
+keyboard>=0.13.5
+
+# HTTP requests to n8n webhook + ElevenLabs API
+requests>=2.31.0
+
+# NOTE: ElevenLabs TTS uses the requests library (no extra package needed).
+# Configure in config/active-character.json:
+#   "tts_engine": "elevenlabs",
+#   "elevenlabs_api_key": "sk_your_key",
+#   "elevenlabs_voice_id": "your_voice_id"

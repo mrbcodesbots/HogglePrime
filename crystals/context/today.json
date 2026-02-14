@@ -1,0 +1,25 @@
+{
+  "crystal_id": "today",
+  "crystal_type": "context",
+  "version": 1,
+  "created": "2026-02-05",
+  "updated": "2026-02-05",
+  "description": "Today's classroom context - update daily or as needed",
+  "tags": [],
+  "data": {
+    "date": "2026-02-05",
+    "day_of_week": "Wednesday",
+    "current_event": "Expression Week",
+    "announcements": [
+      "Expression Week runs Feb 3-7",
+      "Goal: earn at least 100 MP this week"
+    ],
+    "periods": {
+      "period_1": {"grade": "7th", "focus": "Expression Week assignments"},
+      "period_2": {"grade": "7th", "focus": "Expression Week assignments"},
+      "period_3": {"grade": "8th", "focus": "Expression Week assignments"},
+      "period_4": {"grade": "8th", "focus": "Expression Week assignments"}
+    },
+    "reminders": []
+  }
+}

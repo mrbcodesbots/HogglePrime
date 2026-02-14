@@ -1,0 +1,38 @@
+{
+  "name": "Hoggle Mode Switcher",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "hoggle-mode",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "webhook-mode",
+      "name": "Receive Mode Change",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Mode Switcher - updates the active_mode in hoggle-behavior-modes.json\nconst fs = require('fs');\nconst modesPath = '/data/crystals/personality/hoggle-behavior-modes.json';\n\n// Get the requested mode from the webhook body\nconst requestedMode = ($input.item.json.body.mode || '').toLowerCase().trim();\n\n// Valid modes\nconst validModes = ['classroom', 'demo', 'district', 'hype', 'gaming'];\n\nif (!requestedMode) {\n  return { json: { success: false, error: 'No mode specified. Send {\"mode\": \"classroom|demo|district|hype|gaming\"}' } };\n}\n\nif (!validModes.includes(requestedMode)) {\n  return { json: { success: false, error: `Invalid mode: ${requestedMode}. Valid modes: ${validModes.join(', ')}` } };\n}\n\n// Read current file\nlet modesData;\ntry {\n  modesData = JSON.parse(fs.readFileSync(modesPath, 'utf8'));\n} catch (err) {\n  return { json: { success: false, error: 'Could not read behavior modes crystal: ' + err.message } };\n}\n\nconst previousMode = modesData.data.active_mode;\n\n// Update the active mode\nmodesData.data.active_mode = requestedMode;\nmodesData.updated = new Date().toISOString().split('T')[0];\n\n// Write back\ntry {\n  fs.writeFileSync(modesPath, JSON.stringify(modesData, null, 2), 'utf8');\n} catch (err) {\n  return { json: { success: false, error: 'Could not write behavior modes crystal: ' + err.message } };\n}\n\n// Also update emotional state if gaming mode (banished)\nif (requestedMode === 'gaming') {\n  try {\n    const emotionalPath = '/data/crystals/personality/hoggle-emotional-state.json';\n    const emotionalData = JSON.parse(fs.readFileSync(emotionalPath, 'utf8'));\n    emotionalData.data.current_mood = 'grumpy_post_banish';\n    emotionalData.data.energy = 2;\n    emotionalData.updated = new Date().toISOString().split('T')[0];\n    fs.writeFileSync(emotionalPath, JSON.stringify(emotionalData, null, 2), 'utf8');\n  } catch (err) {\n    // Non-critical, continue\n  }\n}\n\n// If coming back from gaming, set mood to grumpy then cheerful\nif (previousMode === 'gaming' && requestedMode === 'classroom') {\n  try {\n    const emotionalPath = '/data/crystals/personality/hoggle-emotional-state.json';\n    const emotionalData = JSON.parse(fs.readFileSync(emotionalPath, 'utf8'));\n    emotionalData.data.current_mood = 'grumpy_post_banish';\n    emotionalData.data.energy = 5;\n    emotionalData.updated = new Date().toISOString().split('T')[0];\n    fs.writeFileSync(emotionalPath, JSON.stringify(emotionalData, null, 2), 'utf8');\n  } catch (err) {\n    // Non-critical\n  }\n}\n\nreturn {\n  json: {\n    success: true,\n    previous_mode: previousMode,\n    new_mode: requestedMode,\n    message: `Hoggle switched from ${previousMode} to ${requestedMode} mode`\n  }\n};"
+      },
+      "id": "switch-mode",
+      "name": "Switch Mode",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [500, 300]
+    }
+  ],
+  "connections": {
+    "Receive Mode Change": {
+      "main": [
+        [{ "node": "Switch Mode", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

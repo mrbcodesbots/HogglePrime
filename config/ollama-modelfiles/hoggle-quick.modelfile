@@ -1,0 +1,18 @@
+# Hoggle Quick - Fast responses for simple interactions
+# Context: 4,096 tokens (~3,000 words)
+# Use for: Greetings, simple Q&A, jokes, quick acknowledgments
+
+FROM qwen2.5:14b-instruct
+
+# Small context for speed
+PARAMETER num_ctx 4096
+
+# Slightly higher temperature for personality
+PARAMETER temperature 0.7
+
+# Keep responses concise
+PARAMETER num_predict 256
+
+# Stop sequences
+PARAMETER stop "<|im_end|>"
+PARAMETER stop "<|endoftext|>"

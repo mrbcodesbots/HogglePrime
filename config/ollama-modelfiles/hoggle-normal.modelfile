@@ -1,0 +1,18 @@
+# Hoggle Normal - Standard classroom interactions
+# Context: 16,384 tokens (~12,000 words)
+# Use for: Teaching help, explanations, conversation with memory
+
+FROM qwen2.5:14b-instruct
+
+# Balanced context for normal conversations
+PARAMETER num_ctx 16384
+
+# Good balance of creativity and accuracy
+PARAMETER temperature 0.7
+
+# Allow longer responses when needed
+PARAMETER num_predict 1024
+
+# Stop sequences
+PARAMETER stop "<|im_end|>"
+PARAMETER stop "<|endoftext|>"
