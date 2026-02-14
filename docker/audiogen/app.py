@@ -20,18 +20,38 @@ import types
 
 # Stub out xformers before audiocraft tries to import it.
 # AudioCraft unconditionally does "from xformers import ops" in its
-# transformer module, but xformers is only used for memory-efficient
-# attention during training.  For inference the standard PyTorch
-# attention path works fine, so we provide an empty stub instead of
-# pulling in the full xformers build (which needs CUDA dev headers).
+# transformer module and calls _verify_xformers_memory_efficient_compat()
+# which checks for specific functions.  xformers is only used for
+# memory-efficient attention during training.  For inference the standard
+# PyTorch attention path works fine, so we provide a stub with the
+# attributes audiocraft expects instead of pulling in the full xformers
+# build (which needs CUDA dev headers).
 _xformers = types.ModuleType("xformers")
-_xformers.ops = types.ModuleType("xformers.ops")
+_ops = types.ModuleType("xformers.ops")
+
+# audiocraft's _verify_xformers_memory_efficient_compat() imports these:
+_ops.memory_efficient_attention = None
+_ops.LowerTriangularMask = None
+
+_xformers.ops = _ops
 sys.modules["xformers"] = _xformers
-sys.modules["xformers.ops"] = _xformers.ops
+sys.modules["xformers.ops"] = _ops
 
 import gradio as gr
 import scipy.io.wavfile
 import torch
+
+# Patch audiocraft's transformer module to skip xformers verification.
+# The _verify_xformers_memory_efficient_compat() function raises ImportError
+# even with a stub because it may check callability or version.  Replace it
+# with a no-op, then also disable the xformers code path flag.
+import audiocraft.modules.transformer as _ac_tx
+_ac_tx._verify_xformers_memory_efficient_compat = lambda: None
+# If the module has a flag that controls whether xformers attention is used,
+# force it off so inference uses the standard PyTorch path.
+if hasattr(_ac_tx, '_is_xformers_available'):
+    _ac_tx._is_xformers_available = False
+
 from audiocraft.models import AudioGen
 
 
