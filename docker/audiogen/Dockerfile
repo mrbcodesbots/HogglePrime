@@ -16,10 +16,17 @@ FROM pytorch/pytorch:2.4.1-cuda12.4-cudnn9-runtime
 
 WORKDIR /app
 
-# Install system deps
+# Install system deps (pkg-config + libav*-dev needed to build PyAV from source)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
     git \
+    pkg-config \
+    libavformat-dev \
+    libavcodec-dev \
+    libavdevice-dev \
+    libavutil-dev \
+    libswscale-dev \
+    libswresample-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python deps
