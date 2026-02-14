@@ -33,13 +33,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Install Python deps
 # audiocraft pins torch==2.1.0 which would downgrade the base image's 2.4.1
 # and break NumPy/transformers, so install it --no-deps and add its
-# requirements separately (skipping torch/torchvision/torchtext/xformers).
+# requirements separately with versions compatible with torch 2.4.1.
 RUN pip install --no-cache-dir --no-deps audiocraft && \
     pip install --no-cache-dir \
     av einops flashy "hydra-core>=1.1" hydra_colorlog julius \
     num2words sentencepiece "spacy>=3.6.1" huggingface_hub \
     "transformers>=4.31.0" demucs librosa torchmetrics encodec \
-    protobuf torchaudio \
+    protobuf torchaudio xformers \
     gradio scipy
 
 # Copy server app
