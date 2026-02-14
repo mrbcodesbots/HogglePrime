@@ -41,16 +41,17 @@ import gradio as gr
 import scipy.io.wavfile
 import torch
 
-# Patch audiocraft's transformer module to skip xformers verification.
-# The _verify_xformers_memory_efficient_compat() function raises ImportError
-# even with a stub because it may check callability or version.  Replace it
-# with a no-op, then also disable the xformers code path flag.
+# Patch audiocraft's transformer module to bypass xformers entirely.
+# Three things are needed:
+#   1. The stub above satisfies "from xformers import ops" at module level.
+#   2. Replace _verify_xformers_memory_efficient_compat() with a no-op so
+#      StreamingMultiheadAttention.__init__ doesn't raise ImportError.
+#   3. Force _efficient_attention_backend = 'torch' so the forward() method
+#      uses PyTorch's scaled_dot_product_attention instead of xformers ops.
 import audiocraft.modules.transformer as _ac_tx
 _ac_tx._verify_xformers_memory_efficient_compat = lambda: None
-# If the module has a flag that controls whether xformers attention is used,
-# force it off so inference uses the standard PyTorch path.
-if hasattr(_ac_tx, '_is_xformers_available'):
-    _ac_tx._is_xformers_available = False
+if hasattr(_ac_tx, '_efficient_attention_backend'):
+    _ac_tx._efficient_attention_backend = 'torch'
 
 from audiocraft.models import AudioGen
 
