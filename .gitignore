@@ -1,2 +1,5 @@
 # Machine-specific config (may contain API keys)
 config/active-character.json
+
+# Python virtual environment
+venv-voice/
