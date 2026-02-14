@@ -39,7 +39,7 @@ RUN pip install --no-cache-dir --no-deps audiocraft && \
     av einops flashy "hydra-core>=1.1" hydra_colorlog julius \
     num2words sentencepiece "spacy>=3.6.1" huggingface_hub \
     "transformers>=4.31.0" demucs librosa torchmetrics encodec \
-    protobuf torchaudio xformers \
+    protobuf torchaudio "xformers>=0.0.28,<0.0.29" \
     gradio scipy
 
 # Copy server app
